@@ -1,0 +1,26 @@
+"workshopitem"
+{
+	"appid"		"2489330"
+	"publishedfileid"		"0"
+	"contentfolder"		"E:\modding\whiskerwood-traitpeek\workshop\content"
+	"previewfile"		"E:\modding\whiskerwood-traitpeek\docs\screenshot.png"
+	"title"		"TraitPeek - Worker Traits in Building Windows"
+	"description"		"[b]See who's good at the job without opening the whisker list.[/b]
+
+TraitPeek shows each worker's traits as small tags right under their portrait in the building window.
+
+[h2]Features[/h2]
+[list]
+[*]Trait tags under each worker portrait, matched to the right whisker
+[*]Colour-coded: green = good, red = bad, beige = neutral
+[*]Trait names in the game's language
+[*]Hidden while the whisker picker is open; doesn't block clicks
+[*]Works in every building with worker slots, also while paused
+[/list]
+
+[h2]Source[/h2]
+[url=https://github.com/ringuh/whiskerwood-traitpeek]GitHub[/url]
+
+Created using the [url=https://github.com/Whiskerwood-Modding/Whiskerwood-Project]Whiskerwood modkit[/url]."
+	"changenote"		"First release"
+}
