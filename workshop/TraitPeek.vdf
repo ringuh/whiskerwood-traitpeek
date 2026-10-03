@@ -1,7 +1,7 @@
 "workshopitem"
 {
 	"appid"		"2489330"
-	"publishedfileid"		"0"
+	"publishedfileid"		"3808826683"
 	"contentfolder"		"E:\modding\whiskerwood-traitpeek\workshop\content"
 	"previewfile"		"E:\modding\whiskerwood-traitpeek\docs\screenshot.png"
 	"title"		"TraitPeek - Worker Traits in Building Windows"
@@ -22,5 +22,5 @@ TraitPeek shows each worker's traits as small tags right under their portrait in
 [url=https://github.com/ringuh/whiskerwood-traitpeek]GitHub[/url]
 
 Created using the [url=https://github.com/Whiskerwood-Modding/Whiskerwood-Project]Whiskerwood modkit[/url]."
-	"changenote"		"First release"
+	"changenote"		"Rebuilt for Whiskerwood's Unreal Engine 5.8 update. No behaviour changes."
 }

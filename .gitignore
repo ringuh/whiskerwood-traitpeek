@@ -3,3 +3,8 @@ workshop/content/
 *.pak
 tools/out/
 __pycache__/
+
+# local helper scripts
+sync-from-modkit.sh
+sync-from-modkit.bat
+sync-to-steam.bat

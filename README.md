@@ -28,17 +28,13 @@ Whiskers' traits (Swift, Unsafe worker, Gifted Teacher…) decide who is good at
 | `tools/` | `t3d.py` + `traitpeek_build.py`: Python generator that writes the graphs in `docs/graphs/` from the modkit's reflection dump. |
 | `docs/screenshot.png` | Screenshot, also used as the Workshop preview image. |
 | `workshop/` | SteamCMD item file (`TraitPeek.vdf`) and [upload steps](workshop/HOW_TO_UPLOAD.md). |
-| `sync-from-modkit.sh` | Copies the mod's assets from the modkit into this repo; `--release` also stages the built `.pak` for upload. |
-| `sync-from-modkit.bat` | Windows version: copies the assets and stages the built `.pak` + uplugin into `workshop/content/`. |
-| `sync-to-steam.bat` | Uploads `workshop/content/` to the Workshop with SteamCMD. |
 
 ## Building from source
 
-1. Set up the official [Whiskerwood modkit](https://github.com/Whiskerwood-Modding/Whiskerwood-Project) (custom UE 5.6 build, see its README).
+1. Set up the official [Whiskerwood modkit](https://github.com/Whiskerwood-Modding/Whiskerwood-Project) (custom **UE 5.8** build, see its README). Whiskerwood moved from UE 5.6 to 5.8 in October 2026; a pak cooked with the old 5.6 modkit is built for the old engine, so use the 5.8 modkit.
 2. Copy `Mod/TraitPeek/` from this repo to `Content/Mods/TraitPeek/` in the modkit project.
 3. Open the project, right-click the `TraitPeek` folder → **Cook & Install** (Mod Tools).
-4. After editing in the editor, run `./sync-from-modkit.sh` (Git Bash) to copy the changed assets back into `Mod/TraitPeek/`, then commit.
-   The script assumes the modkit is at `E:\modding\Whiskerwood-Project`; override with `MODKIT=/e/other/path ./sync-from-modkit.sh`.
+4. After editing in the editor, copy the changed `.uasset` files from the modkit back into `Mod/TraitPeek/`, then commit.
 
 ### Regenerating a graph
 
@@ -64,6 +60,11 @@ The game's trait table (`ArcoGameInstance.m_whiskerTraits`) isn't reachable from
 - The vertical offset (88 units under the name label) was tuned by eye; if a game update changes the portrait card layout, the tags may overlap the stats row.
 - Two workers with exactly the same name in one building would both get the first one's tags.
 - `WBP_TraitPeek` still writes a debug line to `modlog.txt` each time the set of portraits in an open window changes.
+
+## Version history
+
+- **0.2** — Rebuilt with the UE 5.8 modkit for Whiskerwood's Unreal Engine 5.8 update. No behaviour changes.
+- **0.1** — First release (UE 5.6).
 
 ## Credits
 

@@ -1,14 +1,15 @@
 # Uploading TraitPeek to the Steam Workshop
 
-Whiskerwood has no in-game uploader; the scripts use Valve's SteamCMD (`E:\modding\steamcmd\steamcmd.exe`).
+Whiskerwood has no in-game uploader; use Valve's [SteamCMD](https://developer.valvesoftware.com/wiki/SteamCMD).
 
-1. In the modkit, run **Cook & Install** on `Content/Mods/TraitPeek`.
-2. Double-click **`sync-from-modkit.bat`** in the repo root. It copies the assets into `Mod/TraitPeek/`
-   and stages `TraitPeek.pak` + `TraitPeek.uplugin` into `workshop/content/` (git-ignored).
-   (`./sync-from-modkit.sh --release` in Git Bash does the same.)
-3. Update `"changenote"` in `TraitPeek.vdf` (and `"Version"` in `Mod/TraitPeek/TraitPeek.uplugin`).
-4. Double-click **`sync-to-steam.bat`**. It logs in as `pienirinkula` (SteamCMD asks for the password /
-   Steam Guard code if it has no saved login) and uploads with `workshop_build_item`.
+1. In the modkit (UE 5.8), run **Cook & Install** on `Content/Mods/TraitPeek`.
+2. Copy `TraitPeek.pak` from `%localappdata%\Whiskerwood\Saved\mods\TraitPeek\` and
+   `Mod/TraitPeek/TraitPeek.uplugin` into `workshop/content/` (git-ignored; the pak is a build artifact).
+3. Update `"changenote"` in `TraitPeek.vdf` (and `"Version"` in the uplugin).
+4. Run:
+   ```
+   steamcmd.exe +login YOUR_STEAM_USERNAME +workshop_build_item "E:\modding\whiskerwood-traitpeek\workshop\TraitPeek.vdf" +quit
+   ```
 5. The first upload writes the new item id into `"publishedfileid"` in the .vdf - commit that change,
    and check the item's visibility on its Workshop page. Later updates: same steps, new changenote.
 
