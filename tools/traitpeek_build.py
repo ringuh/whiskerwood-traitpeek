@@ -3,7 +3,7 @@ Usage: python tools/traitpeek_build.py   (needs the modkit's jmap, see t3d.py)
 Paste each file into the matching asset's graph (Ctrl+A, Delete, Ctrl+V), compile.
 
 How it works (1.0):
-- BP_MapLoad (Actor): onLoadingFinished -> Debug (TraitPeekConfig/debug.ini), creates WBP_TraitLayer (an always-on,
+- BP_MapLoad (Actor): onLoadingFinished -> Debug (TraitPeekConfig/debug.txt), creates WBP_TraitLayer (an always-on,
   click-through canvas that holds the trait columns) and WBP_TraitPeek (the worker). Any key or mouse
   button released in the world (InputKey AnyKey, works while paused) "kicks" TraitPeek.
 - Kick = add WBP_TraitPeek to the viewport (or restart its 0.4 s window if it is already there).
@@ -13,7 +13,7 @@ How it works (1.0):
 - Refresh: open building window = visible ArcoView whose Context is a GridActor. Workers come from the
   building's worker component (Industry, FarmBuilding, ... m_workers.m_workerSlots, in slot order);
   unknown building types fall back to "every whisker whose workplace is this building".
-  Colour rules (1.1): built-in INI rules + the user's Saved\\mods\\TraitPeekConfig\\TraitPeek.ini (additive,
+  Colour rules (1.1): built-in INI rules + the user's Saved\\mods\\TraitPeekConfig\\TraitPeek.txt (additive,
   top to bottom, later line wins); see traitpeek_rules.py.
   Trait ids pessimest / unsafeworker are mapped to their text keys trait.pessimist / trait.unsafe.
   Each name label (string_name) claims the first unused column with that name, so two whiskers
@@ -50,7 +50,7 @@ class _Gate(Node):
         return {'execute': self._e, 'then': self._x}[k]
 
 def log(g, x, y, msg_pin=None, msg=None, name='Log'):
-    """Debug-only log line: runs only when the Debug variable is true (Saved\\mods\\TraitPeekConfig\\debug.ini with any content)."""
+    """Debug-only log line: runs only when the Debug variable is true (Saved\\mods\\TraitPeekConfig\\debug.txt with any content)."""
     dg = g.get('Debug', BOOL, x - 200, y + 120, name=name + 'DebugGet')
     br = g.branch(x - 150, y, name + 'IfDebug'); link(dg['Debug'], br['Condition'])
     a = modapi(g, x, y + 160)
@@ -258,7 +258,7 @@ def remove_columns(g, x, y, suffix):
 
 
 import traitpeek_rules
-CONFIG_DIR = 'TraitPeekConfig'   # %localappdata%\\Whiskerwood\\Saved\\mods\\TraitPeekConfig\\ (TraitPeek.ini, debug.ini)
+CONFIG_DIR = 'TraitPeekConfig'   # %localappdata%\\Whiskerwood\\Saved\\mods\\TraitPeekConfig\\ (TraitPeek.txt, debug.txt; ReadModTextFile adds .txt itself)
 TRAIT_ALIASES = [('pessimest', 'pessimist'), ('unsafeworker', 'unsafe')]
 
 def knot(g, name, x, y):
@@ -287,12 +287,12 @@ def peek_api(g, fn, x, y, name, **kw):
     return n
 
 def build_rules(g, prev, X, Y):
-    """prev: node whose 'then' starts this. Loads rules once (built-in INI + TraitPeekConfig/TraitPeek.ini), then computes
+    """prev: node whose 'then' starts this. Loads rules once (built-in INI + TraitPeekConfig/TraitPeek.txt), then computes
     Green/Yellow/Red for Building. Returns a knot; continue from its OutputPin."""
     # --- load once
     brl = g.branch(X, Y, 'BrRulesLoaded'); link(g.get('RulesLoaded', BOOL, X - 150, Y + 150, name='RulesLoadedGet')['RulesLoaded'], brl['Condition'])
     ex(prev, brl)
-    r2 = peek_api(g, 'ReadModTextFile', X + 600, Y + 300, 'ReadUserIni', modName=CONFIG_DIR, Filename='TraitPeek.ini'); ex(brl, r2, 'else')
+    r2 = peek_api(g, 'ReadModTextFile', X + 600, Y + 300, 'ReadUserIni', modName=CONFIG_DIR, Filename='TraitPeek'); ex(brl, r2, 'else')
     allt = concat(g, X + 650, Y + 550, traitpeek_rules.base_string(), '|', r2['ReturnValue'])
     nl = g.call(KSTR + ':Replace', 'NewlinesToBars', X + 900, Y + 550, From='\\n', To='|', SearchCase='IgnoreCase'); link(allt, nl['SourceString'])
     srt = g.setv('RulesText', STR, X + 900, Y + 300, name='SetRulesText'); link(nl['ReturnValue'], srt['RulesText']); ex(r2, srt)
@@ -354,7 +354,7 @@ def build_rules(g, prev, X, Y):
     l2 = g.call(KSTR + ':Len', 'UserRulesLen', X + 3000, Y + 1700); link(r2['ReturnValue'], l2['S'])
     l2s = g.call(KSTR + ':Conv_IntToString', 'UserRulesLenStr', X + 3150, Y + 1700); link(l2['ReturnValue'], l2s['inInt'])
     lmsg = concat(g, X + 3300, Y + 1500, 'TraitPeek rules: ', alen('GroupNames', X + 3100, Y + 1450, 'NGroups'), ' groups, ',
-                  alen('RuleTargets', X + 3100, Y + 1550, 'NRules'), ' colour rules; ' + CONFIG_DIR + '/TraitPeek.ini ', l2s['ReturnValue'], ' chars')
+                  alen('RuleTargets', X + 3100, Y + 1550, 'NRules'), ' colour rules; ' + CONFIG_DIR + '/TraitPeek.txt ', l2s['ReturnValue'], ' chars')
     lgr = log(g, X + 3300, Y + 1300, msg_pin=lmsg, name='LogRules'); ex(srl, lgr)
     # --- compute for this building
     K = X; KY = Y + 2600
@@ -692,8 +692,8 @@ link(modapi(g, 200, 200)['ReturnValue'], bl['self'])
 evL['OutputDelegate'].memref = 'MemberParent="%s",MemberName="OnLoaded"' % MAPLOAD_CLS
 link(evL['OutputDelegate'], d); ex(bp, bl)
 
-# OnLoaded: Debug from TraitPeekConfig/debug.ini (any content = on), layer + worker widgets, input
-rdf = api_call(g, 'ReadModTextFile', 300, 400, name='ReadDebugFile', modName=CONFIG_DIR, Filename='debug.ini'); ex(evL, rdf)
+# OnLoaded: Debug from TraitPeekConfig/debug.txt (any content = on), layer + worker widgets, input
+rdf = api_call(g, 'ReadModTextFile', 300, 400, name='ReadDebugFile', modName=CONFIG_DIR, Filename='debug'); ex(evL, rdf)
 dfe = g.call(KSTR + ':IsEmpty', 'DebugFileEmpty', 550, 550); link(rdf['ReturnValue'], dfe['InString'])
 dfn = g.call(KML + ':Not_PreBool', 'DebugFileThere', 750, 550); link(dfe['ReturnValue'], dfn['A'])
 sdbg = g.setv('Debug', BOOL, 650, 400, name='SetDebug'); link(dfn['ReturnValue'], sdbg['Debug']); ex(rdf, sdbg)
@@ -712,7 +712,7 @@ spd = g.call(KSL + ':SetBoolPropertyByName', 'GiveDebug', 2400, 400, PropertyNam
 link(cp['ReturnValue'], spd['Object']); link(sdbg['Output_Get'], spd['Value']); ex(spr, spd)
 ei = g.call('/Script/Engine.Actor:EnableInput', 'EnableKeys', 2700, 400); link(pc['ReturnValue'], ei['PlayerController']); ex(spd, ei)
 slf = g.add(BG + 'K2Node_Self', 'Me', [], 2550, 600); slf.pin('self', T('object', sub='self'), out=True); link(slf['self'], ei['self'])
-lr = log(g, 3100, 400, msg='TraitPeek ready (1.1)', name='LogReady'); ex(ei, lr)
+lr = log(g, 3100, 400, msg='TraitPeek ready (1.2)', name='LogReady'); ex(ei, lr)
 
 # any key / mouse button released in the world (works while paused, not consumed) -> kick
 kA = g.add(BG + 'K2Node_InputKey', 'AnyKey', ['InputKey=AnyKey', 'bConsumeInput=False', 'bExecuteWhenPaused=True'], 0, 1200)

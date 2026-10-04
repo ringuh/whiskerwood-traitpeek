@@ -1,7 +1,7 @@
 {
 	"Name": "TraitPeek",
 	"Description": "Shows each worker's traits right under their portrait in a building's window, coloured for that building, so you don't have to open the whisker list.",
-	"Version": "1.1",
+	"Version": "1.2",
 	"CreatedBy": "rinku",
 	"EngineVersion": "5.8"
 }

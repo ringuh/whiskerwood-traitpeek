@@ -14,7 +14,7 @@ TraitPeek shows each worker's traits as small tags right under their portrait in
 [*]Trait tags under each worker portrait, matched to the right whisker (also with duplicate names)
 [*]Colours per building: green = good here, yellow = so-so, red = bad here, beige = doesn't matter
 [*]Fuel-aware: Can't Smell is green and Sickly isn't red where the recipe burns fuel
-[*]Your own rules per building or group in a small INI file that updates never overwrite
+[*]Your own rules per building or group in a small text file that updates never overwrite
 [*]Trait names in the game's language
 [*]Hidden while the whisker picker is open; doesn't block clicks
 [*]Works in every building with worker slots, also while paused
@@ -22,23 +22,37 @@ TraitPeek shows each worker's traits as small tags right under their portrait in
 [/list]
 
 [h2]Your own colours[/h2]
-Create [b]%localappdata%\Whiskerwood\Saved\mods\TraitPeekConfig\TraitPeek.ini[/b]. It only adds to the built-in rules; lines apply top to bottom and the last matching line wins.
+The colours come from built-in rules: [url=https://github.com/ringuh/whiskerwood-traitpeek/blob/main/docs/TraitPeek-defaults.txt]see the default rules on GitHub[/url]. To change them:
+[olist]
+[*]Open the folder [b]%localappdata%\Whiskerwood\Saved\mods\[/b] (paste it into the Explorer address bar).
+[*]Create a folder [b]TraitPeekConfig[/b] there.
+[*]In it, create a text file named [b]TraitPeek.txt[/b] (it must end in .txt; check that Windows didn't make it TraitPeek.txt.txt).
+[*]Write your rules in it, save, and load your save game.
+[/olist]
+Your file only adds to the defaults: lines apply top to bottom and the last matching line wins, so you only write what you want to change. Mod updates never touch this folder.
 [code]
+; Bakery: Swift good, Rebellious doesn't matter
 [bakery]
 green = swift
 neutral = rebellious
 
+; your own group of buildings
 [groups]
 kitchens = Bakery, stewery, fineKitchen
 
 [kitchens]
 red = sickly
 [/code]
-Sections: all, fuel, nofuel, a group or a building id. Keys: green, yellow, red, neutral. The built-in rules, building ids and trait ids are listed on GitHub.
+[list]
+[*][b]Sections:[/b] all, fuel, nofuel, a group name (factory, extraction, service, school, research, fishing, docks or your own) or a building id
+[*][b]Keys:[/b] green, yellow, red, neutral (neutral removes the colour)
+[*][b]Values:[/b] trait ids, comma-separated
+[/list]
+Building ids, trait ids and the full format: [url=https://github.com/ringuh/whiskerwood-traitpeek#configuration]Configuration on GitHub[/url].
 
 [h2]Source[/h2]
 [url=https://github.com/ringuh/whiskerwood-traitpeek]GitHub[/url]
 
 Created using the [url=https://github.com/Whiskerwood-Modding/Whiskerwood-Project]Whiskerwood modkit[/url]."
-	"changenote"		"1.1: Trait colours now depend on the building (green, yellow, red, neutral per building type and group; fuel-aware Can't Smell and Sickly). Add your own rules in Saved\mods\TraitPeekConfig\TraitPeek.ini. Also: fixed missing tags when two workers share a name, Pessimist and Unsafe worker show their proper names, tags appear and disappear instantly, no log output."
+	"changenote"		"1.2: Your own colour rules now load. The file is Saved\mods\TraitPeekConfig\TraitPeek.txt (the game only reads .txt files, so TraitPeek.ini from 1.1 was ignored); rename it if you made one."
 }
