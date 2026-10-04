@@ -8,11 +8,11 @@ Whiskers' traits (Swift, Unsafe worker, Gifted Teacher…) decide who is good at
 
 ## Features
 
-- **Tags under each portrait**, matched to the right whisker by name, in every building with worker slots (production, harvesting, farms, services…).
+- **Tags under each portrait**, matched to the right whisker (also when two workers share a name), in every building with worker slots (production, harvesting, farms, services…).
 - **Colour-coded**: green = good trait, red = bad trait, beige = neutral.
-- **Trait names in the game's language**, taken from the game's own text (`trait.<id>` keys).
+- **Trait names in the game's language**, taken from the game's own text (`trait.<id>` keys); the two traits whose id differs from their text key (`pessimest`, `unsafeworker`) are mapped to `trait.pessimist` / `trait.unsafe`.
 - **Stays out of the way**: hidden while the whisker picker is open, gone when the building window closes, doesn't block clicks.
-- Updates five times a second, also while paused.
+- **Instant and event-driven**: updates right when you open a building window or click something in it, also while paused; nothing runs while you're not interacting.
 
 ## Installing
 
@@ -41,14 +41,33 @@ Whiskers' traits (Swift, Unsafe worker, Gifted Teacher…) decide who is good at
 `python tools/traitpeek_build.py` writes fresh paste text into `tools/out/` (needs the modkit's `Content/DynamicClasses/Whiskerwood-*.jmap.gz`; set `JMAP=...` if it isn't next to this repo). In the asset's graph: Ctrl+A, Delete, Ctrl+V, compile. Hand edits that the generator doesn't reproduce:
 
 - `WBP_TraitChip` designer: `ChipBorder` brush colour `#242528` (the game's trait-tag grey), padding 6/2.
-- If a **Cast To …** node's blue output pin pastes unconnected, drag it to the node it feeds (Get Text / m_isAgentSelectOpen).
+- `WBP_TraitLayer` designer: a single **Canvas Panel** named `Root` (**Is Variable** on), Visibility **Not Hit-Testable (Self Only)**. No graph.
+- If a **Cast To …** node's blue output pin pastes unconnected, drag it to the node it feeds (Get Text / m_isAgentSelectOpen / m_workers).
+
+Variables (exact names and types):
+
+| Blueprint | Variable | Type |
+|---|---|---|
+| `BP_MapLoad` | `Debug` | Boolean |
+| | `Peek` | User Widget (object reference) |
+| `WBP_TraitPeek` | `Debug`, `Bound` | Boolean |
+| | `Waited` | Float |
+| | `LayerRoot` | Canvas Panel (object reference) |
+| | `Anchor` | Widget (object reference) |
+| | `Building` | Actor (object reference) |
+| | `Workers` | Prototype Agent (object reference) **array** |
+| | `Slots` | Worker Slot (structure) **array** |
+| | `Key`, `LastKey`, `Dbg`, `LastDbg`, `Source` | String |
+| | `ColNames`, `PassNames` | String **array** |
+| | `Columns` | WBP_TraitColumn (object reference) **array** |
 
 ## How it works
 
 | Asset | Role |
 |---|---|
-| `BP_MapLoad` | Runs when a save loads; creates `WBP_TraitPeek` and adds it to the viewport. |
-| `WBP_TraitPeek` | Full-screen, click-through overlay. Every 0.2 s (real time) it finds the open building window (any `ArcoView` whose `Context` is a `GridActor`), collects the whiskers whose `Prototype_Agent.GetWorkplace()` is that building, and (re)builds one `WBP_TraitColumn` per worker when the set changes. It then searches the window with the game's `NaviUi.FindDecendentsOfClasses` for the portraits' name labels (`TextBlock`s named `string_name` inside `WorkerSlot_CircleDesign`), matches each label's text to a worker's `agentName`, and places that worker's column 88 units below the label. While the panel's `WorkerAssignmentPanel.m_isAgentSelectOpen` is set (the whisker picker is open), all columns are hidden. |
+| `BP_MapLoad` | When a save has loaded (`onLoadingFinished`): reads `debug.txt`, creates `WBP_TraitLayer` (always in the viewport, holds the tag columns) and `WBP_TraitPeek`, hands it the layer's canvas and the Debug flag, and enables input. Any key or mouse button released in the world (`Any Key` input event, not consumed, works while paused) "kicks" `WBP_TraitPeek`. |
+| `WBP_TraitLayer` | Full-screen, click-through canvas the columns live on. No logic, never ticks anything. |
+| `WBP_TraitPeek` | The worker. A kick adds it to the viewport (or restarts its window if it's already there); while it is in the viewport its Tick refreshes every frame, and 0.4 s after the last kick it removes itself, so nothing runs between interactions. It binds the open window's own buttons (prev/next building, +/-, slots, picker, close) to the same kick, because clicks on game UI don't reach input events. A refresh finds the open building window (a visible `ArcoView` whose `Context` is a `GridActor`), reads the workers in slot order from the building's worker component (`Industry`, `FarmBuilding`, `HarvestingCamp`, … `.m_workers.m_workerSlots[].Agent`; unknown building types fall back to whiskers whose `GetWorkplace()` is the building), and rebuilds one `WBP_TraitColumn` per worker when the list changes. It then finds the portraits' name labels (`TextBlock`s named `string_name`) with `NaviUi.FindDecendentsOfClasses`; each label claims the first unused column whose `agentName` matches, so two whiskers with the same name each get their own tags, and the column goes 88 units under the label. While the whisker picker is open (`WorkerAssignmentPanel.m_isAgentSelectOpen`) the columns are hidden and the refresh keeps running until it closes. |
 | `WBP_TraitColumn` | One worker's tags: reads `m_characteristics.traits`, looks up the display name via `LocManager.GetWordFromKey("trait.<id>")`, picks the colour from a fixed good/bad list, and adds a `WBP_TraitChip` per trait to a wrap box. |
 | `WBP_TraitChip` | A single tag: grey border + text, text tinted with the trait's colour. |
 | `PAL_TraitPeek` | Primary Asset Label that puts the mod into its own pak chunk. |
@@ -58,10 +77,16 @@ The game's trait table (`ArcoGameInstance.m_whiskerTraits`) isn't reachable from
 ## Known limitations
 
 - The vertical offset (88 units under the name label) was tuned by eye; if a game update changes the portrait card layout, the tags may overlap the stats row.
-- Two workers with exactly the same name in one building would both get the first one's tags.
-- `WBP_TraitPeek` still writes a debug line to `modlog.txt` each time the set of portraits in an open window changes.
+- If a worker is assigned or leaves on its own (not through a click) while the window stays open, the tags update on your next click or key press.
+- Two workers with the same name are told apart by slot order; the game's portrait order is assumed to match its slot list.
+
+## Debug logging
+
+Published builds log nothing. To see what the mod does, create `%localappdata%\Whiskerwood\Saved\mods\TraitPeek\debug.txt` with any text in it (an empty file counts as off) and load a save: `modlog.txt` then gets a "ready" line and one line per building window whenever the matched names change (`TraitPeek: <building> via <worker component>: <label>=<column> …`).
 
 ## Version history
+
+- **1.0** — Fixed missing tags when two workers in a building have the same name. Pessimist and Unsafe worker now show their proper names and red colour (they showed as `pessimest` / `unsafeworker`). Tags now appear and disappear instantly (event-driven instead of checking five times a second). No log output unless `debug.txt` is present.
 
 - **0.2** — Rebuilt with the UE 5.8 modkit for Whiskerwood's Unreal Engine 5.8 update. No behaviour changes.
 - **0.1** — First release (UE 5.6).

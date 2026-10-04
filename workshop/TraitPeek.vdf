@@ -11,16 +11,17 @@ TraitPeek shows each worker's traits as small tags right under their portrait in
 
 [h2]Features[/h2]
 [list]
-[*]Trait tags under each worker portrait, matched to the right whisker
+[*]Trait tags under each worker portrait, matched to the right whisker (also with duplicate names)
 [*]Colour-coded: green = good, red = bad, beige = neutral
 [*]Trait names in the game's language
 [*]Hidden while the whisker picker is open; doesn't block clicks
 [*]Works in every building with worker slots, also while paused
+[*]Event-driven: appears instantly, does nothing while you are not interacting
 [/list]
 
 [h2]Source[/h2]
 [url=https://github.com/ringuh/whiskerwood-traitpeek]GitHub[/url]
 
 Created using the [url=https://github.com/Whiskerwood-Modding/Whiskerwood-Project]Whiskerwood modkit[/url]."
-	"changenote"		"Rebuilt for Whiskerwood's Unreal Engine 5.8 update. No behaviour changes."
+	"changenote"		"1.0: Fixed missing tags when two workers in a building have the same name. Pessimist and Unsafe worker show their proper names. Tags now appear and disappear instantly when you open or close a building window. No log output."
 }
