@@ -7,21 +7,38 @@
 	"title"		"TraitPeek - Worker Traits in Building Windows"
 	"description"		"[b]See who's good at the job without opening the whisker list.[/b]
 
-TraitPeek shows each worker's traits as small tags right under their portrait in the building window.
+TraitPeek shows each worker's traits as small tags right under their portrait in the building window, coloured for that building: Weak Knees is so-so in a Bakery but bad in a mine.
 
 [h2]Features[/h2]
 [list]
 [*]Trait tags under each worker portrait, matched to the right whisker (also with duplicate names)
-[*]Colour-coded: green = good, red = bad, beige = neutral
+[*]Colours per building: green = good here, yellow = so-so, red = bad here, beige = doesn't matter
+[*]Fuel-aware: Can't Smell is green and Sickly isn't red where the recipe burns fuel
+[*]Your own rules per building or group in a small INI file that updates never overwrite
 [*]Trait names in the game's language
 [*]Hidden while the whisker picker is open; doesn't block clicks
 [*]Works in every building with worker slots, also while paused
 [*]Event-driven: appears instantly, does nothing while you are not interacting
 [/list]
 
+[h2]Your own colours[/h2]
+Create [b]%localappdata%\Whiskerwood\Saved\mods\TraitPeekConfig\TraitPeek.ini[/b]. It only adds to the built-in rules; lines apply top to bottom and the last matching line wins.
+[code]
+[bakery]
+green = swift
+neutral = rebellious
+
+[groups]
+kitchens = Bakery, stewery, fineKitchen
+
+[kitchens]
+red = sickly
+[/code]
+Sections: all, fuel, nofuel, a group or a building id. Keys: green, yellow, red, neutral. The built-in rules, building ids and trait ids are listed on GitHub.
+
 [h2]Source[/h2]
 [url=https://github.com/ringuh/whiskerwood-traitpeek]GitHub[/url]
 
 Created using the [url=https://github.com/Whiskerwood-Modding/Whiskerwood-Project]Whiskerwood modkit[/url]."
-	"changenote"		"1.0: Fixed missing tags when two workers in a building have the same name. Pessimist and Unsafe worker show their proper names. Tags now appear and disappear instantly when you open or close a building window. No log output."
+	"changenote"		"1.1: Trait colours now depend on the building (green, yellow, red, neutral per building type and group; fuel-aware Can't Smell and Sickly). Add your own rules in Saved\mods\TraitPeekConfig\TraitPeek.ini. Also: fixed missing tags when two workers share a name, Pessimist and Unsafe worker show their proper names, tags appear and disappear instantly, no log output."
 }

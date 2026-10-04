@@ -3,7 +3,7 @@ Usage: python tools/traitpeek_build.py   (needs the modkit's jmap, see t3d.py)
 Paste each file into the matching asset's graph (Ctrl+A, Delete, Ctrl+V), compile.
 
 How it works (1.0):
-- BP_MapLoad (Actor): onLoadingFinished -> Debug (debug.txt), creates WBP_TraitLayer (an always-on,
+- BP_MapLoad (Actor): onLoadingFinished -> Debug (TraitPeekConfig/debug.ini), creates WBP_TraitLayer (an always-on,
   click-through canvas that holds the trait columns) and WBP_TraitPeek (the worker). Any key or mouse
   button released in the world (InputKey AnyKey, works while paused) "kicks" TraitPeek.
 - Kick = add WBP_TraitPeek to the viewport (or restart its 0.4 s window if it is already there).
@@ -13,6 +13,8 @@ How it works (1.0):
 - Refresh: open building window = visible ArcoView whose Context is a GridActor. Workers come from the
   building's worker component (Industry, FarmBuilding, ... m_workers.m_workerSlots, in slot order);
   unknown building types fall back to "every whisker whose workplace is this building".
+  Colour rules (1.1): built-in INI rules + the user's Saved\\mods\\TraitPeekConfig\\TraitPeek.ini (additive,
+  top to bottom, later line wins); see traitpeek_rules.py.
   Trait ids pessimest / unsafeworker are mapped to their text keys trait.pessimist / trait.unsafe.
   Each name label (string_name) claims the first unused column with that name, so two whiskers
   with the same name each get their own column.
@@ -48,7 +50,7 @@ class _Gate(Node):
         return {'execute': self._e, 'then': self._x}[k]
 
 def log(g, x, y, msg_pin=None, msg=None, name='Log'):
-    """Debug-only log line: runs only when the Debug variable is true (debug.txt next to the pak)."""
+    """Debug-only log line: runs only when the Debug variable is true (Saved\\mods\\TraitPeekConfig\\debug.ini with any content)."""
     dg = g.get('Debug', BOOL, x - 200, y + 120, name=name + 'DebugGet')
     br = g.branch(x - 150, y, name + 'IfDebug'); link(dg['Debug'], br['Condition'])
     a = modapi(g, x, y + 160)
@@ -95,7 +97,7 @@ open(OUT + '/WBP_TraitChip.txt', 'w').write(g.text())
 
 # =========================================================================== COLUMN
 g = Graph(COLUMN)
-ev = g.custom_event('SetData', [('InAgent', OBJ(AGENT)), ('InTable', NAME)], 0, 0)
+ev = g.custom_event('SetData', [('InAgent', OBJ(AGENT)), ('InGreen', STR), ('InYellow', STR), ('InRed', STR)], 0, 0)
 ch = g.get('m_characteristics', STRUCT('/Script/ProjectArco.AgentCharacteristics'), 150, 250, owner=AGENT, name='Chars')
 link(ev['InAgent'], ch['self'])
 # break struct
@@ -123,8 +125,6 @@ loop = g.macro('ForEachLoop', NAME, 1800, 0, name='TraitLoop')
 link(toa['Result'], loop['Array'])
 ex(ev, clr); ex(clr, toa); ex(toa, loop, 'then', 'Exec')
 
-NEG = ',snorer,loner,heavyEater,pessimist,sickly,unsafe,rude,rebellious,weak,slow,weakknees,greedy,mypace,'
-POS = ',lightEater,strongShoulders,swift,optimist,scientist,mascochist,healthy,warmCore,nosmell,diligent,teacher,considerate,inquisitive,content,'
 rn = g.call(KSTR + ':Conv_NameToString', 'RowName', 2000, 300); link(loop['Array Element'], rn['InName'])
 raw = g.call(KSTR + ':Replace', 'StripPrefix', 2250, 300, From='trait.', To='', SearchCase='IgnoreCase'); link(rn['ReturnValue'], raw['SourceString'])
 # trait ids whose text key is spelled differently in the game's own code (0.7.207 exe strings)
@@ -142,13 +142,14 @@ wk = g.call('/Script/SystemCore.LocManager:GetWordFromKey', 'LocWord', 3000, 420
 s2 = g.call(KML + ':SelectString', 'PickDisp', 3250, 300)
 link(wk['ReturnValue'], s2['A']); link(bare['ReturnValue'], s2['B']); link(hk['ReturnValue'], s2['bPickA'])
 wrapped = concat(g, 2500, 700, ',', bare['ReturnValue'], ',')
-neg = g.call(KSTR + ':Contains', 'IsNegative', 2850, 700, SearchIn=NEG); link(wrapped, neg['Substring'])
-pos = g.call(KSTR + ':Contains', 'IsPositive', 2850, 850, SearchIn=POS); link(wrapped, pos['Substring'])
-c1 = g.call(KML + ':SelectColor', 'PosOrNeutral', 3150, 850,
-            A='(R=0.550000,G=0.950000,B=0.500000,A=1.000000)', B='(R=0.900000,G=0.850000,B=0.700000,A=1.000000)')
-link(pos['ReturnValue'], c1['bPickA'])
-c2 = g.call(KML + ':SelectColor', 'TraitColor', 3450, 700, A='(R=1.000000,G=0.450000,B=0.400000,A=1.000000)')
-link(c1['ReturnValue'], c2['B']); link(neg['ReturnValue'], c2['bPickA'])
+GREEN, YELLOW, RED, BEIGE = ('(R=0.550000,G=0.950000,B=0.500000,A=1.000000)', '(R=1.000000,G=0.800000,B=0.200000,A=1.000000)',
+                              '(R=1.000000,G=0.450000,B=0.400000,A=1.000000)', '(R=0.900000,G=0.850000,B=0.700000,A=1.000000)')
+isg = g.call(KSTR + ':Contains', 'IsGreen', 2850, 700); link(ev['InGreen'], isg['SearchIn']); link(wrapped, isg['Substring'])
+isy = g.call(KSTR + ':Contains', 'IsYellow', 2850, 850); link(ev['InYellow'], isy['SearchIn']); link(wrapped, isy['Substring'])
+isr = g.call(KSTR + ':Contains', 'IsRed', 2850, 1000); link(ev['InRed'], isr['SearchIn']); link(wrapped, isr['Substring'])
+c1 = g.call(KML + ':SelectColor', 'GreenOrBeige', 3150, 700, A=GREEN, B=BEIGE); link(isg['ReturnValue'], c1['bPickA'])
+c3 = g.call(KML + ':SelectColor', 'OrYellow', 3300, 800, A=YELLOW); link(c1['ReturnValue'], c3['B']); link(isy['ReturnValue'], c3['bPickA'])
+c2 = g.call(KML + ':SelectColor', 'TraitColor', 3450, 900, A=RED); link(c3['ReturnValue'], c2['B']); link(isr['ReturnValue'], c2['bPickA'])
 cw = g.create_widget(CHIP, 2850, 0, name='CreateChip')
 ex(loop, cw, 'LoopBody')
 sd = g.bpcall(CHIP, 'SetData', [('InText', STR), ('InColor', LC)], name='ChipSetData', x=3450, y=0)
@@ -255,6 +256,183 @@ def remove_columns(g, x, y, suffix):
     ex(c1, c2)
     return lp, c2
 
+
+import traitpeek_rules
+CONFIG_DIR = 'TraitPeekConfig'   # %localappdata%\\Whiskerwood\\Saved\\mods\\TraitPeekConfig\\ (TraitPeek.ini, debug.ini)
+TRAIT_ALIASES = [('pessimest', 'pessimist'), ('unsafeworker', 'unsafe')]
+
+def knot(g, name, x, y):
+    k = g.add(BG + 'K2Node_Knot', name, [], x, y)
+    k.pin('InputPin', EXEC); k.pin('OutputPin', EXEC, out=True)
+    return k
+
+def arr_get(g, var, elem_t, idx_pin, x, y, name):
+    a = g.get(var, ARR(elem_t), x - 150, y + 80, name=name + 'Arr')
+    n = array_get(g, elem_t, x, y, name=name); link(a[var], n['Array']); link(idx_pin, n['Dimension 1'])
+    return n['Output']
+
+def arr_add(g, var, elem_t, item_pin, x, y, name):
+    a = g.get(var, ARR(elem_t), x - 100, y + 200, name=name + 'Arr')
+    n = g.arr('Array_Add', elem_t, x, y, name=name); link(a[var], n['TargetArray']); link(item_pin, n['NewItem'])
+    return n
+
+def arr_clear(g, var, elem_t, x, y, name):
+    a = g.get(var, ARR(elem_t), x - 100, y + 200, name=name + 'Arr')
+    n = g.arr('Array_Clear', elem_t, x, y, name=name); link(a[var], n['TargetArray'])
+    return n
+
+def peek_api(g, fn, x, y, name, **kw):
+    a = modapi(g, x - 250, y + 150)
+    n = g.call(API + ':' + fn, name, x, y, **kw); link(a['ReturnValue'], n['self'])
+    return n
+
+def build_rules(g, prev, X, Y):
+    """prev: node whose 'then' starts this. Loads rules once (built-in INI + TraitPeekConfig/TraitPeek.ini), then computes
+    Green/Yellow/Red for Building. Returns a knot; continue from its OutputPin."""
+    # --- load once
+    brl = g.branch(X, Y, 'BrRulesLoaded'); link(g.get('RulesLoaded', BOOL, X - 150, Y + 150, name='RulesLoadedGet')['RulesLoaded'], brl['Condition'])
+    ex(prev, brl)
+    r2 = peek_api(g, 'ReadModTextFile', X + 600, Y + 300, 'ReadUserIni', modName=CONFIG_DIR, Filename='TraitPeek.ini'); ex(brl, r2, 'else')
+    allt = concat(g, X + 650, Y + 550, traitpeek_rules.base_string(), '|', r2['ReturnValue'])
+    nl = g.call(KSTR + ':Replace', 'NewlinesToBars', X + 900, Y + 550, From='\\n', To='|', SearchCase='IgnoreCase'); link(allt, nl['SourceString'])
+    srt = g.setv('RulesText', STR, X + 900, Y + 300, name='SetRulesText'); link(nl['ReturnValue'], srt['RulesText']); ex(r2, srt)
+    pia = g.call(KSTR + ':ParseIntoArray', 'SplitLines', X + 1150, Y + 550, Delimiter='|', CullEmptyStrings='true')
+    link(g.get('RulesText', STR, X + 1000, Y + 650, name='RulesTextGet')['RulesText'], pia['SourceString'])
+    sln = g.setv('Lines', ARR(STR), X + 1150, Y + 300, name='SetLines'); link(pia['ReturnValue'], sln['Lines']); ex(srt, sln)
+    c1 = arr_clear(g, 'GroupNames', STR, X + 1400, Y + 300, 'ClearGroupNames'); ex(sln, c1)
+    c2 = arr_clear(g, 'GroupMembers', STR, X + 1600, Y + 300, 'ClearGroupMembers'); ex(c1, c2)
+    c3 = arr_clear(g, 'RuleTargets', STR, X + 1800, Y + 300, 'ClearRuleTargets'); ex(c2, c3)
+    c4 = arr_clear(g, 'RuleColours', STR, X + 2000, Y + 300, 'ClearRuleColours'); ex(c3, c4)
+    c5 = arr_clear(g, 'RuleTraits', STR, X + 2200, Y + 300, 'ClearRuleTraits'); ex(c4, c5)
+    ssc = g.setv('Section', STR, X + 2400, Y + 300, value='', name='ResetSection'); ex(c5, ssc)
+    ll = g.macro('ForEachLoop', STR, X + 2650, Y + 300, name='LineLoop')
+    link(g.get('Lines', ARR(STR), X + 2500, Y + 500, name='LinesLoopGet')['Lines'], ll['Array']); ex(ssc, ll, 'then', 'Exec')
+    # clean the line: drop '# comment', trim, remove spaces, lower case
+    LX, LY = X + 2900, Y + 300
+    hs = g.call(KSTR + ':Split', 'CutComment', LX, LY + 300, InStr='#', SearchCase='IgnoreCase', SearchDir='FromStart'); link(ll['Array Element'], hs['SourceString'])
+    nc = g.call(KML + ':SelectString', 'NoComment', LX + 250, LY + 300); link(hs['LeftS'], nc['A']); link(ll['Array Element'], nc['B']); link(hs['ReturnValue'], nc['bPickA'])
+    hs2 = g.call(KSTR + ':Split', 'CutComment2', LX + 250, LY + 450, InStr=';', SearchCase='IgnoreCase', SearchDir='FromStart'); link(nc['ReturnValue'], hs2['SourceString'])
+    nc2 = g.call(KML + ':SelectString', 'NoComment2', LX + 450, LY + 450); link(hs2['LeftS'], nc2['A']); link(nc['ReturnValue'], nc2['B']); link(hs2['ReturnValue'], nc2['bPickA'])
+    tr0 = g.call(KSTR + ':Trim', 'TrimLine', LX + 450, LY + 300); link(nc2['ReturnValue'], tr0['SourceString'])
+    tr = g.call(KSTR + ':TrimTrailing', 'TrimLineEnd', LX + 550, LY + 400); link(tr0['ReturnValue'], tr['SourceString'])   # Trim is leading-only; this drops the CR of CRLF files
+    ns = g.call(KSTR + ':Replace', 'NoSpaces', LX + 650, LY + 300, From=' ', To='', SearchCase='IgnoreCase'); link(tr['ReturnValue'], ns['SourceString'])
+    lo = g.call(KSTR + ':ToLower', 'LowerLine', LX + 850, LY + 300); link(ns['ReturnValue'], lo['SourceString'])
+    sl = g.setv('Line', STR, LX, LY, name='SetLine'); link(lo['ReturnValue'], sl['Line']); ex(ll, sl, 'LoopBody')
+    def line_get(x, y, n): return g.get('Line', STR, x, y, name=n)['Line']
+    em = g.call(KSTR + ':IsEmpty', 'LineEmpty', LX + 300, LY + 150); link(line_get(LX + 150, LY + 200, 'LineE'), em['InString'])
+    bem = g.branch(LX + 250, LY, 'BrLineEmpty'); link(em['ReturnValue'], bem['Condition']); ex(sl, bem)
+    sw = g.call(KSTR + ':StartsWith', 'IsSection', LX + 550, LY + 150, InPrefix='[', SearchCase='IgnoreCase'); link(line_get(LX + 400, LY + 200, 'LineS'), sw['SourceString'])
+    bsw = g.branch(LX + 500, LY, 'BrIsSection'); link(sw['ReturnValue'], bsw['Condition']); ex(bem, bsw, 'else')
+    sb1 = g.call(KSTR + ':Replace', 'NoOpenBracket', LX + 600, LY - 50, From='[', To='', SearchCase='IgnoreCase'); link(line_get(LX + 450, LY - 50, 'LineSec'), sb1['SourceString'])
+    sb2 = g.call(KSTR + ':Replace', 'NoCloseBracket', LX + 800, LY - 50, From=']', To='', SearchCase='IgnoreCase'); link(sb1['ReturnValue'], sb2['SourceString'])
+    ssec = g.setv('Section', STR, LX + 750, LY - 200, name='SetSection'); link(sb2['ReturnValue'], ssec['Section']); ex(bsw, ssec)
+    secg = g.get('Section', STR, LX + 650, LY + 250, name='SectionGet')
+    ig = g.call(KSTR + ':EqualEqual_StriStri', 'InGroups', LX + 850, LY + 200, B='groups'); link(secg['Section'], ig['A'])
+    big = g.branch(LX + 800, LY, 'BrInGroups'); link(ig['ReturnValue'], big['Condition']); ex(bsw, big, 'else')
+    # [groups]  name = a, b, c   (a repeated name adds members)
+    GX = LX + 1100
+    gs = g.call(KSTR + ':Split', 'SplitGroup', GX, LY - 300, InStr='=', SearchCase='IgnoreCase', SearchDir='FromStart'); link(line_get(GX - 150, LY - 250, 'LineG'), gs['SourceString'])
+    gfi = array_find(g, STR, GX + 250, LY - 150, name='FindGroup'); link(g.get('GroupNames', ARR(STR), GX + 100, LY - 100, name='GroupNamesFind')['GroupNames'], gfi['TargetArray']); link(gs['LeftS'], gfi['ItemToFind'])
+    gex = g.call(KML + ':GreaterEqual_IntInt', 'GroupExists', GX + 450, LY - 150, B='0'); link(gfi['ReturnValue'], gex['A'])
+    bgx = g.branch(GX + 400, LY - 450, 'BrGroupExists'); link(gex['ReturnValue'], bgx['Condition']); ex(big, bgx)
+    oldm = arr_get(g, 'GroupMembers', STR, gfi['ReturnValue'], GX + 650, LY - 250, 'OldMembers')
+    gst = array_set(g, STR, GX + 900, LY - 600, name='AddMembers'); link(g.get('GroupMembers', ARR(STR), GX + 750, LY - 450, name='GroupMembersSet')['GroupMembers'], gst['TargetArray'])
+    link(gfi['ReturnValue'], gst['Index']); link(concat(g, GX + 750, LY - 350, oldm, gs['RightS'], ','), gst['Item']); ex(bgx, gst)
+    ga1 = arr_add(g, 'GroupNames', STR, gs['LeftS'], GX + 700, LY - 450, 'AddGroupName'); ex(bgx, ga1, 'else')
+    ga2 = arr_add(g, 'GroupMembers', STR, concat(g, GX + 800, LY - 250, ',', gs['RightS'], ','), GX + 950, LY - 450, 'AddGroupMembers'); ex(ga1, ga2)
+    # [<target>]  colour = a, b, c   (target = all, fuel, nofuel, a group or a building id)
+    CX = LX + 1400
+    s1 = g.call(KSTR + ':Split', 'SplitColour', CX, LY + 400, InStr='=', SearchCase='IgnoreCase', SearchDir='FromStart'); link(line_get(CX - 150, LY + 450, 'LineC'), s1['SourceString'])
+    ra = arr_add(g, 'RuleTargets', STR, g.get('Section', STR, CX + 150, LY + 450, name='SectionTarget')['Section'], CX + 300, LY + 200, 'AddRuleTarget'); ex(big, ra, 'else')
+    rb = arr_add(g, 'RuleColours', STR, s1['LeftS'], CX + 550, LY + 200, 'AddRuleColour'); ex(ra, rb)
+    rc = arr_add(g, 'RuleTraits', STR, s1['RightS'], CX + 800, LY + 200, 'AddRuleTraits'); ex(rb, rc)
+    # loaded
+    srl = g.setv('RulesLoaded', BOOL, X + 2900, Y + 1300, value='true', name='SetRulesLoaded'); ex(ll, srl, 'Completed')
+    def alen(var, x, y, n):
+        a = g.get(var, ARR(STR), x - 100, y + 80, name=n + 'Arr'); l = g.arr('Array_Length', STR, x, y, name=n, pure=True); link(a[var], l['TargetArray'])
+        c = g.call(KSTR + ':Conv_IntToString', n + 'Str', x + 150, y); link(l['ReturnValue'], c['inInt']); return c['ReturnValue']
+    l2 = g.call(KSTR + ':Len', 'UserRulesLen', X + 3000, Y + 1700); link(r2['ReturnValue'], l2['S'])
+    l2s = g.call(KSTR + ':Conv_IntToString', 'UserRulesLenStr', X + 3150, Y + 1700); link(l2['ReturnValue'], l2s['inInt'])
+    lmsg = concat(g, X + 3300, Y + 1500, 'TraitPeek rules: ', alen('GroupNames', X + 3100, Y + 1450, 'NGroups'), ' groups, ',
+                  alen('RuleTargets', X + 3100, Y + 1550, 'NRules'), ' colour rules; ' + CONFIG_DIR + '/TraitPeek.ini ', l2s['ReturnValue'], ' chars')
+    lgr = log(g, X + 3300, Y + 1300, msg_pin=lmsg, name='LogRules'); ex(srl, lgr)
+    # --- compute for this building
+    K = X; KY = Y + 2600
+    start = knot(g, 'ComputeColours', K, KY); link(brl['then'], start['InputPin']); link(lgr['then'], start['InputPin'])
+    bgc = g.get('Building', ACTOR, K + 50, KY + 200, name='BuildingRules')
+    occ = g.call('/Script/Engine.GameplayStatics:GetObjectClass', 'BuildingClass', K + 200, KY + 200); link(bgc['Building'], occ['Object'])
+    cdn = g.call(KSL + ':GetClassDisplayName', 'BuildingClassName', K + 400, KY + 200); link(occ['ReturnValue'], cdn['Class'])
+    st1 = g.call(KSTR + ':Replace', 'StripC', K + 650, KY + 200, From='_c|', To='', SearchCase='IgnoreCase'); link(concat(g, K + 500, KY + 300, cdn['ReturnValue'], '|'), st1['SourceString'])
+    st2 = g.call(KSTR + ':Replace', 'StripBar', K + 850, KY + 200, From='|', To='', SearchCase='IgnoreCase'); link(st1['ReturnValue'], st2['SourceString'])
+    st3 = g.call(KSTR + ':ToLower', 'LowerId', K + 1050, KY + 200); link(st2['ReturnValue'], st3['SourceString'])
+    sbi = g.setv('BuildingId', STR, K + 300, KY, name='SetBuildingId'); link(st3['ReturnValue'], sbi['BuildingId']); ex(start, sbi, 'OutputPin')
+    def bid(x, y, n): return g.get('BuildingId', STR, x, y, name=n)['BuildingId']
+    def tg(x, y, n): return g.get('Targets', STR, x, y, name=n)['Targets']
+    stg = g.setv('Targets', STR, K + 550, KY, name='StartTargets'); link(concat(g, K + 450, KY - 150, ',all,', bid(K + 300, KY - 100, 'BidT'), ','), stg['Targets']); ex(sbi, stg)
+    gl = g.macro('ForEachLoop', STR, K + 800, KY, name='GroupLoop')
+    link(g.get('GroupNames', ARR(STR), K + 650, KY + 150, name='GroupNamesLoop')['GroupNames'], gl['Array']); ex(stg, gl, 'then', 'Exec')
+    mem = arr_get(g, 'GroupMembers', STR, gl['Array Index'], K + 1050, KY + 250, 'MembersOfGroup')
+    inm = g.call(KSTR + ':Contains', 'BuildingInGroup', K + 1250, KY + 200); link(mem, inm['SearchIn']); link(concat(g, K + 1100, KY + 400, ',', bid(K + 950, KY + 450, 'BidG'), ','), inm['Substring'])
+    bing = g.branch(K + 1100, KY, 'BrInGroup'); link(inm['ReturnValue'], bing['Condition']); ex(gl, bing, 'LoopBody')
+    stg2 = g.setv('Targets', STR, K + 1400, KY, name='AddGroupTarget'); link(concat(g, K + 1300, KY - 150, tg(K + 1150, KY - 100, 'TgG'), gl['Array Element'], ','), stg2['Targets']); ex(bing, stg2)
+    hasf = g.call(KSTR + ':Contains', 'InFuelGroup', K + 1000, KY + 700, Substring=',fuel,'); link(tg(K + 850, KY + 750, 'TgF'), hasf['SearchIn'])
+    fo = g.call(KML + ':BooleanOR', 'UsesFuel', K + 1200, KY + 700); link(g.get('Fuel', BOOL, K + 1050, KY + 850, name='FuelGet')['Fuel'], fo['A']); link(hasf['ReturnValue'], fo['B'])
+    fs = g.call(KML + ':SelectString', 'FuelTarget', K + 1400, KY + 700, A='fuel,', B='nofuel,'); link(fo['ReturnValue'], fs['bPickA'])
+    stg3 = g.setv('Targets', STR, K + 1400, KY + 500, name='AddFuelTarget'); link(concat(g, K + 1500, KY + 650, tg(K + 1350, KY + 600, 'TgF2'), fs['ReturnValue']), stg3['Targets']); ex(gl, stg3, 'Completed')
+    sg = g.setv('Green', STR, K + 1650, KY + 500, value=',', name='ResetGreen'); ex(stg3, sg)
+    sy = g.setv('Yellow', STR, K + 1850, KY + 500, value=',', name='ResetYellow'); ex(sg, sy)
+    sr = g.setv('Red', STR, K + 2050, KY + 500, value=',', name='ResetRed'); ex(sy, sr)
+    rl = g.macro('ForEachLoop', STR, K + 2300, KY + 500, name='RuleLoop')
+    link(g.get('RuleTargets', ARR(STR), K + 2150, KY + 650, name='RuleTargetsLoop')['RuleTargets'], rl['Array']); ex(sr, rl, 'then', 'Exec')
+    hit = g.call(KSTR + ':Contains', 'RuleApplies', K + 2700, KY + 700); link(tg(K + 2550, KY + 750, 'TgR'), hit['SearchIn']); link(concat(g, K + 2550, KY + 850, ',', rl['Array Element'], ','), hit['Substring'])
+    brh = g.branch(K + 2600, KY + 500, 'BrRuleApplies'); link(hit['ReturnValue'], brh['Condition']); ex(rl, brh, 'LoopBody')
+    trs = arr_get(g, 'RuleTraits', STR, rl['Array Index'], K + 2850, KY + 750, 'TraitsOfRule')
+    pp = g.call(KSTR + ':ParseIntoArray', 'SplitTraits', K + 3050, KY + 750, Delimiter=',', CullEmptyStrings='true'); link(trs, pp['SourceString'])
+    spp = g.setv('Parts', ARR(STR), K + 2900, KY + 500, name='SetParts'); link(pp['ReturnValue'], spp['Parts']); ex(brh, spp)
+    tl_ = g.macro('ForEachLoop', STR, K + 3150, KY + 500, name='RuleTraitLoop')
+    link(g.get('Parts', ARR(STR), K + 3000, KY + 650, name='PartsLoop')['Parts'], tl_['Array']); ex(spp, tl_, 'then', 'Exec')
+    t1 = g.call(KSTR + ':Trim', 'TrimTrait', K + 3350, KY + 750); link(tl_['Array Element'], t1['SourceString'])
+    t1b = g.call(KSTR + ':TrimTrailing', 'TrimTraitEnd', K + 3450, KY + 850); link(t1['ReturnValue'], t1b['SourceString'])
+    t2 = g.call(KSTR + ':ToLower', 'LowerTrait', K + 3550, KY + 750); link(t1b['ReturnValue'], t2['SourceString'])
+    cur = t2['ReturnValue']
+    for i, (a_, b_) in enumerate(TRAIT_ALIASES):
+        e = g.call(KSTR + ':EqualEqual_StriStri', 'RuleIs_' + a_, K + 3750 + 250 * i, KY + 900, B=a_); link(cur, e['A'])
+        sel = g.call(KML + ':SelectString', 'RuleAlias_' + a_, K + 3850 + 250 * i, KY + 800, A=b_); link(cur, sel['B']); link(e['ReturnValue'], sel['bPickA'])
+        cur = sel['ReturnValue']
+    stt = g.setv('Trait', STR, K + 3400, KY + 500, name='SetTrait'); link(cur, stt['Trait']); ex(tl_, stt, 'LoopBody')
+    def trait(x, y, n): return g.get('Trait', STR, x, y, name=n)['Trait']
+    key_ = concat(g, K + 3600, KY + 300, ',', trait(K + 3450, KY + 350, 'TraitKey'), ',')
+    prevn = stt; xx = K + 3700
+    for v in ('Green', 'Yellow', 'Red'):   # take the trait out of every list first (the later rule wins)
+        rp = g.call(KSTR + ':Replace', 'Remove' + v, xx + 50, KY + 650, To=',', SearchCase='IgnoreCase')
+        link(g.get(v, STR, xx - 100, KY + 700, name=v + 'Old')[v], rp['SourceString']); link(key_, rp['From'])
+        sv = g.setv(v, STR, xx, KY + 500, name='Clear' + v); link(rp['ReturnValue'], sv[v]); ex(prevn, sv); prevn = sv; xx += 300
+    colr = arr_get(g, 'RuleColours', STR, rl['Array Index'], xx, KY + 300, 'ColourOfRule')
+    prevb = (prevn, 'then')
+    for v in ('Green', 'Yellow', 'Red'):
+        eq = g.call(KSTR + ':EqualEqual_StriStri', 'Is' + v, xx + 200, KY + 300, B=v.lower()); link(colr, eq['A'])
+        bv = g.branch(xx + 200, KY + 500, 'BrIs' + v); link(eq['ReturnValue'], bv['Condition']); ex(prevb[0], bv, prevb[1])
+        av = g.setv(v, STR, xx + 450, KY + 350, name='Add' + v)
+        link(concat(g, xx + 400, KY + 200, g.get(v, STR, xx + 300, KY + 150, name=v + 'Cur')[v], trait(xx + 300, KY + 250, 'Trait' + v), ','), av[v]); ex(bv, av)
+        prevb = (bv, 'else'); xx += 450
+    # --- done: log the result
+    rbid = g.get('BuildingId', STR, K + 2400, KY + 1300, name='BidLog')
+    cmsg = concat(g, K + 2600, KY + 1400, 'TraitPeek colours ', rbid['BuildingId'], ' [', tg(K + 2400, KY + 1400, 'TgLog'), '] green',
+                  g.get('Green', STR, K + 2400, KY + 1500, name='GreenLog')['Green'], ' yellow', g.get('Yellow', STR, K + 2400, KY + 1600, name='YellowLog')['Yellow'],
+                  ' red', g.get('Red', STR, K + 2400, KY + 1700, name='RedLog')['Red'])
+    lgc = log(g, K + 2700, KY + 1200, msg_pin=cmsg, name='LogColours'); ex(rl, lgc, 'Completed')
+    done = knot(g, 'ColoursDone', K + 3300, KY + 1200); link(lgc['then'], done['InputPin'])
+    return done
+
+
+def find_component(g, cls, actor_pin, x, y, name):
+    """GetComponentByClass(cls) -> Branch(IsValid). Returns (component pin, branch). No cast: the return pin is already typed."""
+    gc = g.call('/Script/Engine.Actor:GetComponentByClass', 'Find' + name, x - 150, y + 250, ComponentClass=cls)
+    gc['ReturnValue'].t = OBJ(cls)
+    link(actor_pin, gc['self'])
+    br = g.branch(x, y, 'Has' + name); link(is_valid(g, gc['ReturnValue'], x - 150, y + 150, name='Valid' + name), br['Condition'])
+    return gc['ReturnValue'], br
+
 # ---- Construct (every time the worker is added to the viewport): restart the window, rebind buttons
 con = g.event('/Script/UMG.UserWidget', 'Construct', [], 'Construct', 0, -2400)
 sw0 = g.setv('Waited', DBL, 300, -2400, value='0.0', name='StartWindow'); ex(con, sw0)
@@ -325,25 +503,36 @@ clw = g.arr('Array_Clear', AG, 3000, Y, name='ClearWorkers'); link(wgc['Workers'
 ex(bbr, clw); ex(sbt, clw)
 bg = g.get('Building', ACTOR, 3200, Y + 250, name='BuildingKey')
 dn = g.call(KSL + ':GetDisplayName', 'BuildingName', 3400, Y + 250); link(bg['Building'], dn['Object'])
-sk = g.setv('Key', STR, 3300, Y, name='StartKey'); link(dn['ReturnValue'], sk['Key']); ex(clw, sk)
+# production building: recipe pollutes -> Fuel; recipe name goes into the key so a recipe change recolours
+indc, cin = find_component(g, PA + 'Industry', g.get('Building', ACTOR, 3000, Y - 200, name='BuildingInd')['Building'], 3300, Y - 500, 'IndustryInfo'); ex(clw, cin)
+mrc = g.get('m_recipe', STRUCT(PA + 'IndustryRecipe'), 3450, Y - 300, owner=PA + 'Industry', name='ActiveRecipe'); link(indc, mrc['self'])
+brc = struct_break(g, PA + 'IndustryRecipe', ['pollutionPerSecond'], 3650, Y - 300, 'BreakRecipe'); link(mrc['m_recipe'], brc['IndustryRecipe'])
+pol = g.call(KML + ':Greater_IntInt', 'Pollutes', 3850, Y - 300, B='0'); link(brc['pollutionPerSecond'], pol['A'])
+sfu = g.setv('Fuel', BOOL, 3600, Y - 500, name='SetFuel'); link(pol['ReturnValue'], sfu['Fuel']); ex(cin, sfu)
+rky = g.get('m_activeRecipeKey', NAME, 3650, Y - 150, owner=PA + 'Industry', name='RecipeKey'); link(indc, rky['self'])
+rks = g.call(KSTR + ':Conv_NameToString', 'RecipeKeyStr', 3850, Y - 150); link(rky['m_activeRecipeKey'], rks['InName'])
+sk = g.setv('Key', STR, 3900, Y - 500, name='StartKeyRecipe'); link(concat(g, 3900, Y - 250, dn['ReturnValue'], '|', rks['ReturnValue']), sk['Key']); ex(sfu, sk)
+sfn = g.setv('Fuel', BOOL, 3600, Y - 700, value='false', name='NoFuel'); ex(cin, sfn, 'else')
+sk0 = g.setv('Key', STR, 3900, Y - 700, name='StartKey'); link(dn['ReturnValue'], sk0['Key']); ex(sfn, sk0)
+kj = g.add(BG + 'K2Node_Knot', 'KeyJoin', [], 4200, Y - 550)
+kj.pin('InputPin', EXEC); kj.pin('OutputPin', EXEC, out=True)
+link(sk['then'], kj['InputPin']); link(sk0['then'], kj['InputPin'])
+sk = {'then': kj['OutputPin']}
 
 SLOT_X = 3600 + 450 * len(WORKER_COMPONENTS) + 400
 slotloop = g.macro('ForEachLoop', WSLOT, SLOT_X + 300, Y, name='SlotLoop')
 link(g.get('Slots', ARR(WSLOT), SLOT_X + 100, Y + 250, name='SlotsLoopGet')['Slots'], slotloop['Array'])
-prev = (sk, 'then')
+prev = (kj, 'OutputPin')
 for i, c in enumerate(WORKER_COMPONENTS):
     x = 3600 + 450 * i; yy = Y + 1600
-    bgc = g.get('Building', ACTOR, x - 150, yy + 250, name='BuildingComp%d' % i)
-    gc = g.call('/Script/Engine.Actor:GetComponentByClass', 'Find' + c, x - 100, yy + 350, ComponentClass=PA + c)
-    link(bgc['Building'], gc['self'])
-    cc = cast_np(g, PA + c, x, yy, 'As' + c); link(gc['ReturnValue'], cc['Object']); ex(prev[0], cc, prev[1])
-    mw = g.get('m_workers', WASSIGN, x + 150, yy + 200, owner=PA + c, name='Workers' + c); link(cc['As' + c], mw['self'])
+    comp, cc = find_component(g, PA + c, g.get('Building', ACTOR, x - 300, yy + 250, name='BuildingComp%d' % i)['Building'], x, yy, c); ex(prev[0], cc, prev[1])
+    mw = g.get('m_workers', WASSIGN, x + 150, yy + 200, owner=PA + c, name='Workers' + c); link(comp, mw['self'])
     br = struct_break(g, PA + 'WorkerAssignment', ['m_workerSlots'], x + 150, yy + 300, 'BreakWorkers' + c)
     link(mw['m_workers'], br['WorkerAssignment'])
     ss = g.setv('Slots', ARR(WSLOT), x + 250, yy - 250, name='Slots' + c); link(br['m_workerSlots'], ss['Slots']); ex(cc, ss)
     so = g.setv('Source', STR, x + 250, yy - 450, value=c, name='Source' + c); ex(ss, so)
     ex(so, slotloop, 'then', 'Exec')
-    prev = (cc, 'CastFailed')
+    prev = (cc, 'else')
 # slot -> agent
 bsl = struct_break(g, PA + 'WorkerSlot', ['Agent'], SLOT_X + 550, Y + 250, 'BreakSlot'); link(slotloop['Array Element'], bsl['WorkerSlot'])
 bhas = g.branch(SLOT_X + 600, Y, 'BrSlotFilled'); link(is_valid(g, bsl['Agent'], SLOT_X + 750, Y + 300, name='SlotHasAgent'), bhas['Condition'])
@@ -378,12 +567,15 @@ same = g.call(KSTR + ':EqualEqual_StrStr', 'SameKey', 3900, Y + 250); link(kg2['
 bsame = g.branch(3900, Y, 'BrSame'); link(same['ReturnValue'], bsame['Condition'])
 ex(slotloop, bsame, 'Completed'); ex(al, bsame, 'Completed')
 slk2 = g.setv('LastKey', STR, 4150, Y + 150, name='RememberKey'); link(kg2['Key'], slk2['LastKey']); ex(bsame, slk2, 'else')
-rl1, rl1end = remove_columns(g, 4400, Y + 150, 'B'); ex(slk2, rl1, 'then', 'Exec')
+rules_done = build_rules(g, slk2, 10000, 9000)
+rl1, rl1end = remove_columns(g, 4400, Y + 150, 'B'); ex(rules_done, rl1, 'OutputPin', 'Exec')
 wg3 = g.get('Workers', ARR(AG), 5400, Y + 400, name='WorkersLoop')
 cl = g.macro('ForEachLoop', AG, 5600, Y + 150, name='ColumnLoop'); link(wg3['Workers'], cl['Array']); ex(rl1end, cl, 'then', 'Exec')
 ccw = g.create_widget(COLUMN, 5900, Y + 150, name='CreateColumn'); ex(cl, ccw, 'LoopBody')
-csd = g.bpcall(COLUMN, 'SetData', [('InAgent', AG), ('InTable', NAME)], name='ColumnSetData', x=6200, y=Y + 150)
+csd = g.bpcall(COLUMN, 'SetData', [('InAgent', AG), ('InGreen', STR), ('InYellow', STR), ('InRed', STR)], name='ColumnSetData', x=6200, y=Y + 150)
 link(ccw['ReturnValue'], csd['self']); link(cl['Array Element'], csd['InAgent']); ex(ccw, csd)
+for i, v in enumerate(('Green', 'Yellow', 'Red')):
+    link(g.get(v, STR, 6000, Y + 400 + 100 * i, name=v + 'ForColumn')[v], csd['In' + v])
 rootg = g.get('LayerRoot', CANVAS, 6300, Y + 450, name='LayerRootGet')
 addc = g.call('/Script/UMG.CanvasPanel:AddChildToCanvas', 'AddToLayer', 6500, Y + 150); link(rootg['LayerRoot'], addc['self']); link(ccw['ReturnValue'], addc['Content']); ex(csd, addc)
 sas = g.call('/Script/UMG.CanvasPanelSlot:SetAutoSize', 'ColAutoSize', 6800, Y + 150, InbAutoSize='true'); link(addc['ReturnValue'], sas['self']); ex(addc, sas)
@@ -500,8 +692,8 @@ link(modapi(g, 200, 200)['ReturnValue'], bl['self'])
 evL['OutputDelegate'].memref = 'MemberParent="%s",MemberName="OnLoaded"' % MAPLOAD_CLS
 link(evL['OutputDelegate'], d); ex(bp, bl)
 
-# OnLoaded: Debug from debug.txt, layer + worker widgets, input
-rdf = api_call(g, 'ReadModTextFile', 300, 400, name='ReadDebugFile', modName='TraitPeek', Filename='debug.txt'); ex(evL, rdf)
+# OnLoaded: Debug from TraitPeekConfig/debug.ini (any content = on), layer + worker widgets, input
+rdf = api_call(g, 'ReadModTextFile', 300, 400, name='ReadDebugFile', modName=CONFIG_DIR, Filename='debug.ini'); ex(evL, rdf)
 dfe = g.call(KSTR + ':IsEmpty', 'DebugFileEmpty', 550, 550); link(rdf['ReturnValue'], dfe['InString'])
 dfn = g.call(KML + ':Not_PreBool', 'DebugFileThere', 750, 550); link(dfe['ReturnValue'], dfn['A'])
 sdbg = g.setv('Debug', BOOL, 650, 400, name='SetDebug'); link(dfn['ReturnValue'], sdbg['Debug']); ex(rdf, sdbg)
@@ -520,7 +712,7 @@ spd = g.call(KSL + ':SetBoolPropertyByName', 'GiveDebug', 2400, 400, PropertyNam
 link(cp['ReturnValue'], spd['Object']); link(sdbg['Output_Get'], spd['Value']); ex(spr, spd)
 ei = g.call('/Script/Engine.Actor:EnableInput', 'EnableKeys', 2700, 400); link(pc['ReturnValue'], ei['PlayerController']); ex(spd, ei)
 slf = g.add(BG + 'K2Node_Self', 'Me', [], 2550, 600); slf.pin('self', T('object', sub='self'), out=True); link(slf['self'], ei['self'])
-lr = log(g, 3100, 400, msg='TraitPeek ready (1.0)', name='LogReady'); ex(ei, lr)
+lr = log(g, 3100, 400, msg='TraitPeek ready (1.1)', name='LogReady'); ex(ei, lr)
 
 # any key / mouse button released in the world (works while paused, not consumed) -> kick
 kA = g.add(BG + 'K2Node_InputKey', 'AnyKey', ['InputKey=AnyKey', 'bConsumeInput=False', 'bExecuteWhenPaused=True'], 0, 1200)
