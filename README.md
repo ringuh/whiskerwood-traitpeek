@@ -2,6 +2,8 @@
 
 A quality-of-life mod for [Whiskerwood](https://store.steampowered.com/app/2489330/Whiskerwood/).
 
+> **TraitPeek is deprecated.** Use [Whisker Search by pierrekin](https://steamcommunity.com/sharedfiles/filedetails/?id=3811215283) for the same functionality. Since 1.3 the mod shows a notice about this for 5 minutes after a save loads.
+
 ![Trait tags under the worker portraits of a Bakery: Can't Smell green, My Pace red, Weak Knees yellow](docs/screenshot.png)
 
 Whiskers' traits (Swift, Unsafe worker, Gifted Teacher…) decide who is good at which job, but the building window only shows portraits. TraitPeek puts each worker's traits as small tags right under their portrait, so you don't have to open the whisker list.
@@ -59,7 +61,8 @@ yellow = loner
 | `docs/graphs/` | Blueprint graphs as copy-paste text (T3D). Reference only: the `.uasset` files are the source of truth and contain small hand edits (see below). |
 | `tools/` | `t3d.py` + `traitpeek_build.py`: Python generator that writes the graphs in `docs/graphs/` from the modkit's reflection dump. `traitpeek_rules.py` holds the built-in rules; `rules_sim.py` runs the same rule logic in Python for checking. |
 | `docs/TraitPeek-defaults.txt` | The built-in colour rules in readable form (the same text is built into `WBP_TraitPeek`). |
-| `docs/screenshot.png` | Screenshot, also used as the Workshop preview image. |
+| `docs/screenshot.png` | Screenshot used in this README. |
+| `docs/preview-deprecated.png` | Workshop preview image (the screenshot greyed out with a DEPRECATED stamp). |
 | `workshop/` | SteamCMD item file (`TraitPeek.vdf`) and [upload steps](workshop/HOW_TO_UPLOAD.md). |
 
 ## Building from source
@@ -77,6 +80,7 @@ yellow = loner
 - `WBP_TraitLayer` designer: a single **Canvas Panel** named `Root` (**Is Variable** on), Visibility **Not Hit-Testable (Self Only)**. No graph.
 - If a **Cast To …** node's blue output pin pastes unconnected, drag it to the node it feeds (Get Text / m_isAgentSelectOpen).
 - Paste and compile `WBP_TraitColumn` **before** `WBP_TraitPeek` (its `SetData` event's inputs must exist first).
+- `WBP_TraitNotice` (1.3): Widget Blueprint, parent UserWidget, **empty designer**. Paste and compile it **before** `BP_MapLoad`.
 
 Variables (exact names and types):
 
@@ -84,6 +88,8 @@ Variables (exact names and types):
 |---|---|---|
 | `BP_MapLoad` | `Debug` | Boolean |
 | | `Peek` | User Widget (object reference) |
+| `WBP_TraitNotice` | `Waited` | Float |
+| | `Chip` | Widget (object reference) |
 | `WBP_TraitPeek` | `Debug`, `Bound` | Boolean |
 | | `Waited` | Float |
 | | `LayerRoot` | Canvas Panel (object reference) |
@@ -124,6 +130,7 @@ Published builds log nothing. To see what the mod does, create `%localappdata%\W
 
 ## Version history
 
+- **1.3** — Deprecated in favour of [Whisker Search by pierrekin](https://steamcommunity.com/sharedfiles/filedetails/?id=3811215283). After a save loads, a yellow notice at the top of the screen says so for 5 minutes (real time: also counts while paused, not sped up by game speed), then disappears. Trait tags work as before.
 - **1.2** — The config files now actually load: your rules go in `TraitPeekConfig\TraitPeek.txt` and the debug switch is `TraitPeekConfig\debug.txt`. The game's `ReadModTextFile` always adds `.txt` to the name, so the `.ini` files of 1.1 were never read. If you made a `TraitPeek.ini`, rename it to `TraitPeek.txt`.
 - **1.1** — Trait colours now depend on the building: green / yellow / red / neutral rules per building and group (factories, extraction, services, school, research, fishing, docks), Can't Smell green and Sickly red depending on whether the recipe burns fuel. Your own rules in `TraitPeekConfig\TraitPeek.ini`. Debug switch moved to `TraitPeekConfig\debug.ini`. Published together with the 1.0 fixes.
 - **1.0** (not published separately) — Fixed missing tags when two workers in a building have the same name. Pessimist and Unsafe worker now show their proper names (they showed as `pessimest` / `unsafeworker`). Tags now appear and disappear instantly (event-driven instead of checking five times a second). No log output unless the debug file is present.

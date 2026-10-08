@@ -3,9 +3,13 @@
 	"appid"		"2489330"
 	"publishedfileid"		"3808826683"
 	"contentfolder"		"E:\modding\whiskerwood-traitpeek\workshop\content"
-	"previewfile"		"E:\modding\whiskerwood-traitpeek\docs\screenshot.png"
-	"title"		"TraitPeek - Worker Traits in Building Windows"
-	"description"		"[b]See who's good at the job without opening the whisker list.[/b]
+	"previewfile"		"E:\modding\whiskerwood-traitpeek\docs\preview-deprecated.png"
+	"title"		"[DEPRECATED] TraitPeek - Worker Traits in Building Windows"
+	"description"		"[h1]Deprecated[/h1]
+[b]TraitPeek is no longer maintained. Use [url=https://steamcommunity.com/sharedfiles/filedetails/?id=3811215283]Whisker Search by pierrekin[/url] for the same functionality.[/b]
+The mod still works, and shows a notice about this for 5 minutes after a save loads.
+
+[b]See who's good at the job without opening the whisker list.[/b]
 
 TraitPeek shows each worker's traits as small tags right under their portrait in the building window, coloured for that building: Weak Knees is so-so in a Bakery but bad in a mine.
 
@@ -54,5 +58,5 @@ Building ids, trait ids and the full format: [url=https://github.com/ringuh/whis
 [url=https://github.com/ringuh/whiskerwood-traitpeek]GitHub[/url]
 
 Created using the [url=https://github.com/Whiskerwood-Modding/Whiskerwood-Project]Whiskerwood modkit[/url]."
-	"changenote"		"1.2: Your own colour rules now load. The file is Saved\mods\TraitPeekConfig\TraitPeek.txt (the game only reads .txt files, so TraitPeek.ini from 1.1 was ignored); rename it if you made one."
+	"changenote"		"1.3: TraitPeek is deprecated: use Whisker Search by pierrekin (https://steamcommunity.com/sharedfiles/filedetails/?id=3811215283) for the same functionality. After a save loads, a notice says so for 5 minutes. Trait tags work as before."
 }

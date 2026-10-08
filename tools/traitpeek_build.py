@@ -2,7 +2,7 @@
 Usage: python tools/traitpeek_build.py   (needs the modkit's jmap, see t3d.py)
 Paste each file into the matching asset's graph (Ctrl+A, Delete, Ctrl+V), compile.
 
-How it works (1.0):
+How it works (1.0; 1.3 adds the deprecation notice, see NOTICE below):
 - BP_MapLoad (Actor): onLoadingFinished -> Debug (TraitPeekConfig/debug.txt), creates WBP_TraitLayer (an always-on,
   click-through canvas that holds the trait columns) and WBP_TraitPeek (the worker). Any key or mouse
   button released in the world (InputKey AnyKey, works while paused) "kicks" TraitPeek.
@@ -666,6 +666,27 @@ lgd = log(g, 5900, Y + 100, msg_pin=concat(g, 5500, Y + 300, 'TraitPeek: ', bln[
 open(OUT + '/WBP_TraitPeek.txt', 'w').write(g.text())
 
 
+# =========================================================================== NOTICE (1.3)
+# WBP_TraitNotice (Widget BP, parent UserWidget, EMPTY designer). Variables: Waited (Float), Chip (Widget object ref).
+# Added to the viewport once at load; its Tick (real time, runs while paused, not sped up by game speed) counts
+# NOTICE_SECONDS, then removes the deprecation chip and itself. Nothing runs after that.
+NOTICE = M + 'WBP_TraitNotice'
+NOTICE_SECONDS = '300.0'
+WIDGET_T = OBJ('/Script/UMG.Widget')
+g = Graph(NOTICE)
+tk = g.event('/Script/UMG.UserWidget', 'Tick', [('MyGeometry', GEO), ('InDeltaTime', FLT)], 'Tick', 0, 0)
+wg = g.get('Waited', DBL, 0, 250, name='WaitedGet')
+add = g.call(KML + ':Add_DoubleDouble', 'WaitedAdd', 200, 250); link(wg['Waited'], add['A']); link(tk['InDeltaTime'], add['B'])
+sa = g.setv('Waited', DBL, 300, 0, name='SetWaited'); link(add['ReturnValue'], sa['Waited']); ex(tk, sa)
+ge = g.call(KML + ':GreaterEqual_DoubleDouble', 'TimeUp', 500, 250, B=NOTICE_SECONDS); link(sa['Output_Get'], ge['A'])
+bdue = g.branch(550, 0, 'BrTimeUp'); link(ge['ReturnValue'], bdue['Condition']); ex(sa, bdue)
+cg = g.get('Chip', WIDGET_T, 750, 250, name='ChipGet')
+bcv = g.branch(800, 0, 'BrChipThere'); link(is_valid(g, cg['Chip'], 800, 200, name='ChipValid'), bcv['Condition']); ex(bdue, bcv)
+rmc = g.call('/Script/UMG.Widget:RemoveFromParent', 'HideNotice', 1050, -100); link(cg['Chip'], rmc['self']); ex(bcv, rmc)
+rms = g.call('/Script/UMG.Widget:RemoveFromParent', 'StopNoticeTimer', 1350, 0); ex(rmc, rms); ex(bcv, rms, 'else')
+open(OUT + '/WBP_TraitNotice.txt', 'w').write(g.text())
+
+
 # =========================================================================== MAPLOAD (Actor)
 # Variables: Debug (Boolean), Peek (User Widget object reference)
 LAYER = M + 'WBP_TraitLayer'
@@ -712,7 +733,37 @@ spd = g.call(KSL + ':SetBoolPropertyByName', 'GiveDebug', 2400, 400, PropertyNam
 link(cp['ReturnValue'], spd['Object']); link(sdbg['Output_Get'], spd['Value']); ex(spr, spd)
 ei = g.call('/Script/Engine.Actor:EnableInput', 'EnableKeys', 2700, 400); link(pc['ReturnValue'], ei['PlayerController']); ex(spd, ei)
 slf = g.add(BG + 'K2Node_Self', 'Me', [], 2550, 600); slf.pin('self', T('object', sub='self'), out=True); link(slf['self'], ei['self'])
-lr = log(g, 3100, 400, msg='TraitPeek ready (1.2)', name='LogReady'); ex(ei, lr)
+lr = log(g, 3100, 400, msg='TraitPeek ready (1.3)', name='LogReady'); ex(ei, lr)
+
+# 1.3: deprecation notice. A yellow chip (WBP_TraitChip) at the top centre of the layer canvas, removed after
+# NOTICE_SECONDS of real time by WBP_TraitNotice (empty waiter widget; UI Tick runs in real time, also while
+# paused and unaffected by game speed). Click-through.
+NOTICE_TEXT = 'TraitPeek is deprecated. Use Whisker Search by pierrekin for same functionality'
+NX, NY = 3500, 400
+nch = g.create_widget(CHIP, NX, NY, name='CreateNotice'); link(pc['ReturnValue'], nch['OwningPlayer']); ex(lr, nch)
+nsd = g.bpcall(CHIP, 'SetData', [('InText', STR), ('InColor', LC)], name='NoticeSetData', x=NX + 300, y=NY)
+link(nch['ReturnValue'], nsd['self']); nsd.set('InText', NOTICE_TEXT)
+nsd.set('InColor', '(R=1.000000,G=0.800000,B=0.200000,A=1.000000)'); ex(nch, nsd)
+nac = g.call('/Script/UMG.CanvasPanel:AddChildToCanvas', 'NoticeToLayer', NX + 600, NY)
+link(lroot['Root'], nac['self']); link(nch['ReturnValue'], nac['Content']); ex(nsd, nac)
+nan = g.call('/Script/UMG.CanvasPanelSlot:SetAnchors', 'NoticeAnchorTop', NX + 900, NY,
+             InAnchors='(Minimum=(X=0.500000,Y=0.000000),Maximum=(X=0.500000,Y=0.000000))')
+link(nac['ReturnValue'], nan['self']); ex(nac, nan)
+nal = g.call('/Script/UMG.CanvasPanelSlot:SetAlignment', 'NoticeAlign', NX + 1200, NY, InAlignment='(X=0.500000,Y=0.000000)')
+link(nac['ReturnValue'], nal['self']); ex(nan, nal)
+nas = g.call('/Script/UMG.CanvasPanelSlot:SetAutoSize', 'NoticeAutoSize', NX + 1500, NY, InbAutoSize='true')
+link(nac['ReturnValue'], nas['self']); ex(nal, nas)
+npo = g.call('/Script/UMG.CanvasPanelSlot:SetPosition', 'NoticePos', NX + 1800, NY, InPosition='(X=0.000000,Y=140.000000)')
+link(nac['ReturnValue'], npo['self']); ex(nas, npo)
+nrs = g.call('/Script/UMG.Widget:SetRenderScale', 'NoticeBig', NX + 2100, NY, Scale='(X=1.600000,Y=1.600000)')
+link(nch['ReturnValue'], nrs['self']); ex(npo, nrs)
+nvi = g.call('/Script/UMG.Widget:SetVisibility', 'NoticeClickThrough', NX + 2400, NY, InVisibility='HitTestInvisible')
+link(nch['ReturnValue'], nvi['self']); ex(nrs, nvi)
+ntw = g.create_widget(NOTICE, NX + 2700, NY, name='CreateNoticeTimer'); link(pc['ReturnValue'], ntw['OwningPlayer']); ex(nvi, ntw)
+ngc = g.call(KSL + ':SetObjectPropertyByName', 'GiveNoticeChip', NX + 3000, NY, PropertyName='Chip')
+link(ntw['ReturnValue'], ngc['Object']); link(nch['ReturnValue'], ngc['Value']); ex(ntw, ngc)
+nvp = g.call('/Script/UMG.UserWidget:AddToViewport', 'StartNoticeTimer', NX + 3300, NY, ZOrder='4')
+link(ntw['ReturnValue'], nvp['self']); ex(ngc, nvp)
 
 # any key / mouse button released in the world (works while paused, not consumed) -> kick
 kA = g.add(BG + 'K2Node_InputKey', 'AnyKey', ['InputKey=AnyKey', 'bConsumeInput=False', 'bExecuteWhenPaused=True'], 0, 1200)
@@ -740,6 +791,6 @@ def validate(path):
             if ref and ref.split(' ')[0] not in names: bad.append(ref)
     return len(names), bad
 
-for gname in ('WBP_TraitChip', 'WBP_TraitColumn', 'WBP_TraitPeek', 'BP_MapLoad'):
+for gname in ('WBP_TraitChip', 'WBP_TraitColumn', 'WBP_TraitPeek', 'WBP_TraitNotice', 'BP_MapLoad'):
     n, bad = validate(os.path.join(OUT, gname + '.txt'))
     print(gname, n, 'nodes', 'BAD LINKS' if bad else 'links ok', bad[:5])
